@@ -2,7 +2,7 @@
 
 - **Type:** PRODUCTION
 - **Description:** Agente de navegador browser-use en contenedor único con display virtual Xvfb + VNC/noVNC. Frontend web para enviar tareas y ver el navegador en vivo. Usa OpenRouter como proveedor LLM.
-- **Stack:** Python 3.11, FastAPI + Uvicorn, browser-use + Playwright, ChatOpenRouter (OpenRouter), Xvfb + x11vnc + noVNC, Docker
+- **Stack:** Python 3.11, FastAPI + Uvicorn, browser-use + Playwright, ChatOpenAI→OpenRouter, Xvfb + x11vnc + noVNC, Docker
 - **Domain:** https://browser-agent.pages.therry.dev
 - **VNC:** http://browser-agent.pages.therry.dev:6080/vnc.html
 - **Repo:** https://github.com/themikehage/browser-use-agent
@@ -38,7 +38,7 @@ Contenedor único con:
 
 ## Estabilidad (fixes aplicados)
 
-- `ChatOpenRouter` nativo (no ChatOpenAI + base_url)
+- `ChatOpenAI` con `base_url` OpenRouter (patrón oficial browser-use)
 - Cierre de browser en `finally` (anti-OOM)
 - Lock atómico + 409 si hay tarea en curso
 - Timeout + max_steps

@@ -57,7 +57,7 @@ Preferir modelos con buen structured output (Sonnet / equivalentes).
 ## 3. Checklist de “mínimo viable correcto”
 
 ### Código (`app.py`)
-- [x] `ChatOpenRouter` en lugar de `ChatOpenAI` + base_url
+- [x] LLM vía OpenRouter (`ChatOpenAI` + base_url, API soportada por browser-use)
 - [x] Validar env al startup
 - [x] Lock atómico (check + set dentro del lock)
 - [x] `try/except/finally` con cierre del browser
