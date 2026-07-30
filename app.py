@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from browser_use import Agent, Browser, ChatOpenAI
 
 app = FastAPI()
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 class TaskRequest(BaseModel):
     task: str
@@ -40,3 +39,5 @@ async def run_task(req: TaskRequest):
             return {"result": result}
         finally:
             current_task_running = False
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
