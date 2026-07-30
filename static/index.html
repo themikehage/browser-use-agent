@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agente Browser-Use</title>
+</head>
+<body style="font-family: sans-serif; max-width: 500px; margin: 40px auto;">
+  <h2>Mandar tarea al agente</h2>
+  <textarea id="task" rows="3" style="width:100%"></textarea>
+  <button onclick="enviar()">Ejecutar</button>
+  <p id="status"></p>
+  <p><a id="vnc-link" href="#" target="_blank">Ver navegador en vivo →</a></p>
+
+  <script>
+    (function() {
+      var host = window.location.hostname || 'localhost';
+      var vncUrl = window.location.protocol + '//' + host + ':6080/vnc.html';
+      document.getElementById('vnc-link').href = vncUrl;
+    })();
+
+    async function enviar() {
+      var task = document.getElementById('task').value;
+      var statusEl = document.getElementById('status');
+      statusEl.innerText = 'Ejecutando...';
+      try {
+        var res = await fetch('/task', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({task: task})
+        });
+        var data = await res.json();
+        statusEl.innerText = data.result || JSON.stringify(data);
+      } catch (e) {
+        statusEl.innerText = 'Error: ' + e.message;
+      }
+    }
+  </script>
+</body>
+</html>
