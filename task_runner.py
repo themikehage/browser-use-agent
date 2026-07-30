@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -40,9 +39,10 @@ class TaskRunner:
         self.openrouter_base_url = openrouter_base_url
 
         self._lock = asyncio.Lock()
-        self._current_task: asyncio.Task | None = None
+        self._job_task: asyncio.Task | None = None
         self._current_job_id: str | None = None
         self._cancel_requested = False
+        self._active_browser: Any = None
         self._subscribers: dict[str, list[asyncio.Queue]] = {}
         self._loop_task: asyncio.Task | None = None
 
@@ -51,14 +51,14 @@ class TaskRunner:
             self._loop_task = asyncio.create_task(self._queue_loop(), name="job-queue")
 
     async def stop(self) -> None:
+        if self._current_job_id:
+            await self.cancel_hard(self._current_job_id)
         if self._loop_task:
             self._loop_task.cancel()
             try:
                 await self._loop_task
             except asyncio.CancelledError:
                 pass
-        if self._current_task and not self._current_task.done():
-            self._current_task.cancel()
 
     def subscribe(self, job_id: str) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=500)
@@ -96,28 +96,87 @@ class TaskRunner:
         return event
 
     def request_cancel(self, job_id: str) -> bool:
-        if self._current_job_id != job_id:
-            job = self.store.get_job(job_id)
-            if job and job["status"] == "queued":
-                self.store.update_job(
-                    job_id,
-                    status="cancelled",
-                    error="Cancelado antes de iniciar",
-                    finished_at=_utc_now(),
-                )
-                self.emit(job_id, "log", {"message": "Job cancelado en cola"})
-                return True
+        """Sync entry — schedules hard cancel."""
+        job = self.store.get_job(job_id)
+        if not job:
             return False
+        if job["status"] == "queued":
+            self.store.update_job(
+                job_id,
+                status="cancelled",
+                error="Cancelado antes de iniciar",
+                finished_at=_utc_now(),
+            )
+            self.emit(job_id, "log", {"message": "Job cancelado en cola"})
+            self.emit(job_id, "status", {"status": "cancelled"})
+            return True
+        if job["status"] != "running" and self._current_job_id != job_id:
+            return False
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.cancel_hard(job_id))
+        except RuntimeError:
+            self._cancel_requested = True
+        return True
+
+    async def cancel_hard(self, job_id: str) -> bool:
+        """Force-stop running job: flag + cancel asyncio task + kill browser."""
+        job = self.store.get_job(job_id)
+        if not job:
+            return False
+
+        if job["status"] == "queued":
+            self.store.update_job(
+                job_id,
+                status="cancelled",
+                error="Cancelado antes de iniciar",
+                finished_at=_utc_now(),
+            )
+            self.emit(job_id, "log", {"message": "Job cancelado en cola"})
+            return True
+
+        if job["status"] != "running" and self._current_job_id != job_id:
+            return False
+
         self._cancel_requested = True
-        self.emit(job_id, "log", {"message": "Cancelación solicitada…"})
+        self.emit(job_id, "log", {"message": "Cancelación forzada…"})
+
+        browser = self._active_browser
+        self._active_browser = None
+        if browser is not None:
+            await self._close_browser(browser)
+
+        task = self._job_task
+        if task and not task.done() and self._current_job_id == job_id:
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, timeout=5.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                pass
+
+        job = self.store.get_job(job_id)
+        if job and job["status"] == "running":
+            self.store.update_job(
+                job_id,
+                status="cancelled",
+                error="Cancelado por el usuario",
+                finished_at=_utc_now(),
+            )
+            self.emit(job_id, "error", {"message": "Cancelado por el usuario"})
         return True
 
     async def _queue_loop(self) -> None:
         while True:
             try:
+                if self._job_task and not self._job_task.done():
+                    await asyncio.sleep(0.3)
+                    continue
                 active = self.store.get_active_job()
                 if active and active["status"] == "queued":
-                    await self._run_job(active["id"])
+                    job_id = active["id"]
+                    self._job_task = asyncio.create_task(
+                        self._run_job(job_id), name=f"job-{job_id}"
+                    )
                 await asyncio.sleep(0.4)
             except asyncio.CancelledError:
                 raise
@@ -129,13 +188,12 @@ class TaskRunner:
         async with self._lock:
             self._current_job_id = job_id
             self._cancel_requested = False
-            self._current_task = asyncio.current_task()
             try:
                 await self._execute(job_id)
             finally:
                 self._current_job_id = None
-                self._current_task = None
                 self._cancel_requested = False
+                self._active_browser = None
 
     async def _close_browser(self, browser: Any) -> None:
         if browser is None:
@@ -147,7 +205,7 @@ class TaskRunner:
             try:
                 result = method()
                 if asyncio.iscoroutine(result):
-                    await result
+                    await asyncio.wait_for(result, timeout=8.0)
                 logger.info("Browser closed via %s()", method_name)
                 return
             except Exception as exc:
@@ -191,6 +249,7 @@ class TaskRunner:
                     "--disable-software-rasterizer",
                 ],
             )
+            self._active_browser = browser
 
             llm = ChatOpenAI(
                 model=self.model,
@@ -253,7 +312,9 @@ class TaskRunner:
                     elif isinstance(result, str):
                         b64 = result
                     if b64:
-                        raw = base64.b64decode(b64.split(",")[-1] if "," in b64 else b64)
+                        raw = base64.b64decode(
+                            b64.split(",")[-1] if "," in b64 else b64
+                        )
                         shot = self.screenshots_dir / f"{job_id}.jpg"
                         shot.write_bytes(raw)
                         screenshot_path = str(shot)
@@ -283,6 +344,9 @@ class TaskRunner:
                 timeout=self.task_timeout,
             )
 
+            if self._cancel_requested:
+                raise asyncio.CancelledError("cancel requested")
+
             result = history.final_result()
             steps = step_count
             try:
@@ -309,11 +373,13 @@ class TaskRunner:
             )
             self.emit(job_id, "error", {"message": msg})
         except asyncio.CancelledError:
-            msg = "Tarea cancelada"
-            self.store.update_job(
-                job_id, status="cancelled", error=msg, finished_at=_utc_now()
-            )
-            self.emit(job_id, "error", {"message": msg})
+            msg = "Cancelado por el usuario"
+            job = self.store.get_job(job_id)
+            if job and job["status"] == "running":
+                self.store.update_job(
+                    job_id, status="cancelled", error=msg, finished_at=_utc_now()
+                )
+                self.emit(job_id, "error", {"message": msg})
         except Exception as exc:
             logger.exception("Job %s failed", job_id)
             self.store.update_job(
@@ -324,4 +390,5 @@ class TaskRunner:
             )
             self.emit(job_id, "error", {"message": str(exc)})
         finally:
+            self._active_browser = None
             await self._close_browser(browser)

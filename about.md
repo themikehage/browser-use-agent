@@ -38,6 +38,10 @@
 | `AGENT_MAX_STEPS` | `30` |
 | `AGENT_TASK_TIMEOUT` | `300` |
 | `DATA_DIR` | `/data` |
+| `APP_USERNAME` / `APP_PASSWORD` | auth sesión (login UI) |
+| `APP_AUTH_TOKEN` | bearer opcional API |
+| `AUTH_SECRET` | firma cookies |
+| `VNC_VIEW_ONLY` | `true` |
 
 ## Local
 

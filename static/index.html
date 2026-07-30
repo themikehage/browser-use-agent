@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Browser Agent</title>
   <style>
     :root {
@@ -13,104 +13,134 @@
       --text: #e8eef7;
       --muted: #8b9bb4;
       --accent: #3b82f6;
-      --accent2: #2563eb;
       --ok: #22c55e;
       --warn: #fbbf24;
       --danger: #ef4444;
       --border: #243044;
       --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --bar-h: 64px;
+      --header-h: 52px;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.45;
+      background: var(--bg); color: var(--text); line-height: 1.45;
+      overflow: hidden;
     }
     .app {
+      height: 100%;
       display: grid;
-      grid-template-columns: minmax(320px, 420px) 1fr;
-      grid-template-rows: auto 1fr;
-      height: 100vh;
-      gap: 0;
+      grid-template-rows: var(--header-h) 1fr var(--bar-h);
     }
     header {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 0 14px;
+      border-bottom: 1px solid var(--border); background: var(--panel);
     }
-    header h1 { font-size: 1rem; margin: 0; font-weight: 650; }
-    .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    header h1 { font-size: .95rem; margin: 0; font-weight: 650; }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .badge {
       display: inline-flex; align-items: center; gap: 6px;
       border: 1px solid var(--border); border-radius: 999px;
-      padding: 4px 10px; font-size: 0.8rem; color: var(--muted);
+      padding: 3px 9px; font-size: .75rem; color: var(--muted);
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
     .dot.ok { background: var(--ok); }
     .dot.busy { background: var(--warn); }
     .dot.err { background: var(--danger); }
-    .sidebar {
-      border-right: 1px solid var(--border);
-      background: var(--panel);
-      display: flex; flex-direction: column; min-height: 0;
+    .dot.degraded { background: #f97316; }
+    button.linkish {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 8px; padding: 5px 10px; font-size: .75rem; cursor: pointer;
     }
-    .sidebar .section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
-    .sidebar h2 { margin: 0 0 8px; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+    .panels { position: relative; min-height: 0; overflow: hidden; }
+    .panel {
+      position: absolute; inset: 0;
+      display: none; flex-direction: column; min-height: 0;
+      background: var(--bg);
+    }
+    .panel.active { display: flex; }
+
+    /* Prompt */
+    .prompt-wrap {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      padding: 20px 16px 12px; max-width: 720px; width: 100%; margin: 0 auto;
+    }
+    .prompt-wrap h2 { margin: 0 0 8px; font-size: 1.15rem; }
+    .prompt-wrap .hint { color: var(--muted); margin: 0 0 16px; font-size: .9rem; }
     textarea {
-      width: 100%; min-height: 90px; resize: vertical;
-      border-radius: 8px; border: 1px solid var(--border);
-      background: #0c1118; color: var(--text); padding: 10px; font: inherit;
+      width: 100%; min-height: 140px; resize: vertical;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: var(--panel); color: var(--text); padding: 14px; font: inherit;
     }
-    textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
-    .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-    button {
-      appearance: none; border: 0; border-radius: 8px;
-      background: var(--accent); color: white; font: inherit; font-weight: 600;
-      padding: 9px 14px; cursor: pointer;
+    textarea:focus {
+      outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+      border-color: var(--accent);
     }
-    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    button.danger { background: var(--danger); }
-    button:hover:not(:disabled) { filter: brightness(1.08); }
+    .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    button.primary {
+      appearance: none; border: 0; border-radius: 10px;
+      background: var(--accent); color: #fff; font: inherit; font-weight: 650;
+      padding: 11px 16px; cursor: pointer;
+    }
+    button.danger {
+      appearance: none; border: 0; border-radius: 10px;
+      background: var(--danger); color: #fff; font: inherit; font-weight: 650;
+      padding: 11px 16px; cursor: pointer;
+    }
     button:disabled { opacity: .5; cursor: not-allowed; }
-    .jobs { flex: 1; overflow: auto; padding: 8px; }
+    .toast {
+      margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--panel2);
+      font-size: .88rem; display: none; white-space: pre-wrap;
+    }
+    .toast.show { display: block; }
+    .toast.err { border-color: color-mix(in srgb, var(--danger) 50%, var(--border)); color: #fecaca; }
+
+    /* History */
+    .jobs { flex: 1; overflow: auto; padding: 10px; }
     .job {
-      border: 1px solid var(--border); border-radius: 10px;
-      padding: 10px; margin-bottom: 8px; cursor: pointer; background: var(--panel2);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 12px; margin-bottom: 8px; cursor: pointer; background: var(--panel);
     }
     .job.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-    .job .top { display: flex; justify-content: space-between; gap: 8px; font-size: .78rem; color: var(--muted); }
-    .job .task { margin-top: 6px; font-size: .9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .status { text-transform: uppercase; font-weight: 700; font-size: .7rem; letter-spacing: .04em; }
+    .job .top { display: flex; justify-content: space-between; gap: 8px; font-size: .75rem; color: var(--muted); }
+    .job .task {
+      margin-top: 6px; font-size: .92rem;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .status { text-transform: uppercase; font-weight: 700; font-size: .68rem; letter-spacing: .04em; }
     .status.queued, .status.running { color: var(--warn); }
     .status.completed { color: var(--ok); }
     .status.failed, .status.cancelled { color: var(--danger); }
-    .main {
-      display: grid;
-      grid-template-rows: minmax(220px, 1fr) minmax(180px, 40%);
-      min-height: 0; min-width: 0;
+    .hist-toolbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--panel);
+    }
+
+    /* Viewer */
+    .viewer-layout {
+      flex: 1; display: grid; grid-template-rows: minmax(0, 1fr) minmax(140px, 38%);
+      min-height: 0;
     }
     .viewer {
       position: relative; background: #000; border-bottom: 1px solid var(--border); min-height: 0;
     }
     .viewer iframe, .viewer img.fallback {
-      position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: contain; background: #000;
+      position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+      object-fit: contain; background: #000;
     }
     .viewer .overlay {
-      position: absolute; left: 12px; top: 12px; z-index: 2;
-      background: rgba(0,0,0,.65); border: 1px solid var(--border);
-      border-radius: 8px; padding: 6px 10px; font-size: .8rem; color: var(--muted);
-      max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      position: absolute; left: 10px; top: 10px; z-index: 2;
+      background: rgba(0,0,0,.7); border: 1px solid var(--border);
+      border-radius: 8px; padding: 5px 9px; font-size: .75rem; color: var(--muted);
+      max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .viewer .empty {
       position: absolute; inset: 0; display: grid; place-items: center;
-      color: var(--muted); text-align: center; padding: 24px;
+      color: var(--muted); text-align: center; padding: 20px; font-size: .9rem;
     }
     .log-panel { display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
     .log-panel .toolbar {
@@ -119,7 +149,7 @@
     }
     .log {
       flex: 1; overflow: auto; padding: 10px 12px;
-      font-family: var(--mono); font-size: .8rem; white-space: pre-wrap; word-break: break-word;
+      font-family: var(--mono); font-size: .78rem; white-space: pre-wrap; word-break: break-word;
     }
     .log .line { margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px dashed #1c2738; }
     .log .ts { color: var(--muted); margin-right: 8px; }
@@ -127,89 +157,212 @@
     .log .tag.error { color: var(--danger); }
     .log .tag.result { color: var(--ok); }
     .result-box {
-      margin: 0 12px 12px; padding: 10px; border-radius: 8px;
+      margin: 0 12px 10px; padding: 10px; border-radius: 8px;
       border: 1px solid var(--border); background: #0c1118; white-space: pre-wrap;
-      max-height: 120px; overflow: auto; font-size: .9rem;
+      max-height: 100px; overflow: auto; font-size: .88rem;
     }
-    @media (max-width: 900px) {
-      .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; height: auto; min-height: 100vh; }
-      .sidebar { border-right: 0; border-bottom: 1px solid var(--border); max-height: 45vh; }
-      .main { min-height: 70vh; }
+    button.secondary {
+      background: transparent; border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 7px 12px; font: inherit; font-size: .8rem; cursor: pointer;
+    }
+
+    /* Bottom bar */
+    nav.bottom {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--border); background: var(--panel);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    nav.bottom button {
+      appearance: none; border: 0; background: transparent; color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; font: inherit; font-size: .7rem; font-weight: 600; cursor: pointer;
+      letter-spacing: .02em;
+    }
+    nav.bottom button svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    nav.bottom button.active { color: var(--accent); }
+    nav.bottom button .lbl { text-transform: uppercase; }
+
+    #gate {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      background: var(--bg); z-index: 50; color: var(--muted);
     }
   </style>
 </head>
 <body>
-  <div class="app">
+  <div id="gate">Cargando…</div>
+
+  <div class="app" id="app" style="display:none">
     <header>
       <h1>Browser Agent</h1>
       <div class="badges">
         <span class="badge"><span id="health-dot" class="dot"></span><span id="health-label">…</span></span>
         <span class="badge" id="model-label">modelo: —</span>
+        <button class="linkish" id="btn-logout" onclick="logout()" style="display:none">Salir</button>
       </div>
     </header>
 
-    <aside class="sidebar">
-      <div class="section">
-        <h2>Nueva tarea</h2>
-        <textarea id="task" placeholder="Ej: Ve a example.com y devuelve el H1"></textarea>
-        <div class="row">
-          <button id="btn-run" onclick="startTask()">Ejecutar</button>
-          <button id="btn-cancel" class="danger" onclick="cancelTask()" disabled>Cancelar</button>
+    <div class="panels">
+      <!-- PROMPT -->
+      <section class="panel active" id="panel-prompt" data-panel="prompt">
+        <div class="prompt-wrap">
+          <h2>Nueva tarea</h2>
+          <p class="hint">Describe lo que debe hacer el agente en el navegador.</p>
+          <textarea id="task" placeholder="Ej: Ve a example.com y devuelve el texto del H1"></textarea>
+          <div class="row">
+            <button class="primary" id="btn-run" onclick="startTask()">Ejecutar</button>
+            <button class="danger" id="btn-cancel" onclick="cancelTask()" disabled>Cancelar</button>
+          </div>
+          <div class="toast" id="toast"></div>
         </div>
-      </div>
-      <div class="section" style="padding-bottom:4px">
-        <h2>Historial</h2>
-      </div>
-      <div id="jobs" class="jobs"></div>
-    </aside>
-
-    <main class="main">
-      <section class="viewer" id="viewer">
-        <div class="overlay" id="viewer-meta">Sin tarea activa</div>
-        <div class="empty" id="viewer-empty">El navegador en vivo aparecerá aquí cuando haya una tarea en ejecución.</div>
-        <iframe id="vnc-frame" title="noVNC" style="display:none" allow="clipboard-read; clipboard-write"></iframe>
-        <img id="shot-fallback" class="fallback" alt="screenshot" style="display:none" />
       </section>
-      <section class="log-panel">
-        <div class="toolbar">
-          <strong id="selected-title">Selecciona o lanza una tarea</strong>
+
+      <!-- HISTORY -->
+      <section class="panel" id="panel-history" data-panel="history">
+        <div class="hist-toolbar">
+          <strong>Historial</strong>
           <button class="secondary" onclick="refreshJobs()">Actualizar</button>
         </div>
-        <div id="result" class="result-box" style="display:none"></div>
-        <div id="log" class="log"></div>
+        <div id="jobs" class="jobs"></div>
       </section>
-    </main>
+
+      <!-- VIEWER -->
+      <section class="panel" id="panel-viewer" data-panel="viewer">
+        <div class="viewer-layout">
+          <div class="viewer" id="viewer">
+            <div class="overlay" id="viewer-meta">Sin tarea activa</div>
+            <div class="empty" id="viewer-empty">El navegador en vivo aparecerá aquí cuando haya una tarea en ejecución.</div>
+            <iframe id="vnc-frame" title="noVNC" style="display:none" allow="clipboard-read; clipboard-write"></iframe>
+            <img id="shot-fallback" class="fallback" alt="screenshot" style="display:none" />
+          </div>
+          <div class="log-panel">
+            <div class="toolbar">
+              <strong id="selected-title">Selecciona o lanza una tarea</strong>
+              <button class="secondary" id="btn-cancel-2" onclick="cancelTask()" disabled>Cancelar</button>
+            </div>
+            <div id="result" class="result-box" style="display:none"></div>
+            <div id="log" class="log"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <nav class="bottom" aria-label="Navegación principal">
+      <button type="button" class="active" data-nav="prompt" onclick="showPanel('prompt')">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        <span class="lbl">Prompt</span>
+      </button>
+      <button type="button" data-nav="history" onclick="showPanel('history')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span class="lbl">Historial</span>
+      </button>
+      <button type="button" data-nav="viewer" onclick="showPanel('viewer')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>
+        <span class="lbl">Viewer</span>
+      </button>
+    </nav>
   </div>
 
   <script>
     const state = {
       jobs: [],
       selectedId: localStorage.getItem('selectedJobId') || null,
+      panel: localStorage.getItem('uiPanel') || 'prompt',
       es: null,
       config: null,
       vncLoaded: false,
+      seenEventIds: new Set(),
     };
 
     const el = (id) => document.getElementById(id);
+
+    function showPanel(name) {
+      state.panel = name;
+      localStorage.setItem('uiPanel', name);
+      document.querySelectorAll('.panel').forEach(p => {
+        p.classList.toggle('active', p.dataset.panel === name);
+      });
+      document.querySelectorAll('nav.bottom button').forEach(b => {
+        b.classList.toggle('active', b.dataset.nav === name);
+      });
+      if (name === 'viewer') {
+        const active = state.jobs.find(j => j.status === 'running');
+        if (active) showVnc();
+        else if (state.selectedId) {
+          const j = state.jobs.find(x => x.id === state.selectedId);
+          if (j && (j.last_screenshot || j.status === 'completed')) showScreenshot(j.id);
+        }
+      }
+    }
 
     function statusClass(s) { return 'status ' + (s || ''); }
 
     function shortTime(iso) {
       if (!iso) return '';
-      try {
-        const d = new Date(iso);
-        return d.toLocaleString();
-      } catch { return iso; }
+      try { return new Date(iso).toLocaleString(); } catch { return iso; }
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function toast(msg, isErr) {
+      const t = el('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isErr ? ' err' : '');
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        credentials: 'same-origin',
+        ...opts,
+        headers: {
+          ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(opts.headers || {}),
+        },
+      });
+      if (res.status === 401) {
+        location.href = '/login';
+        throw new Error('No autenticado');
+      }
+      return res;
+    }
+
+    async function ensureAuth() {
+      const res = await fetch('/api/auth/status', { credentials: 'same-origin' });
+      const data = await res.json();
+      if (data.auth_required && !data.authenticated) {
+        location.replace('/login');
+        return false;
+      }
+      if (data.authenticated) el('btn-logout').style.display = '';
+      return true;
+    }
+
+    async function logout() {
+      await api('/api/auth/logout', { method: 'POST' });
+      location.href = '/login';
     }
 
     async function loadConfig() {
       try {
-        const res = await fetch('/api/config');
+        const healthRes = await fetch('/health');
+        const health = await healthRes.json();
+        const res = await api('/api/config');
         const data = await res.json();
         state.config = data;
         el('model-label').textContent = 'modelo: ' + (data.model || '—');
-        el('health-dot').className = 'dot ' + (data.busy ? 'busy' : 'ok');
-        el('health-label').textContent = data.busy ? 'ocupado' : (data.api_key_configured ? 'listo' : 'sin API key');
+
+        let cls = 'ok';
+        let label = 'listo';
+        if (health.status === 'degraded') { cls = 'degraded'; label = 'degraded'; }
+        if (data.busy || health.busy) { cls = 'busy'; label = 'ocupado'; }
+        if (!data.api_key_configured) { cls = 'err'; label = 'sin API key'; }
+        if (health.checks) {
+          const bad = Object.entries(health.checks).filter(([k,v]) => k !== 'api_key' && !v).map(([k]) => k);
+          if (bad.length) label += ' · ' + bad.join(',');
+        }
+        el('health-dot').className = 'dot ' + cls;
+        el('health-label').textContent = label;
       } catch {
         el('health-dot').className = 'dot err';
         el('health-label').textContent = 'sin conexión';
@@ -217,19 +370,17 @@
     }
 
     async function refreshJobs() {
-      const res = await fetch('/api/tasks?limit=50');
+      const res = await api('/api/tasks?limit=50');
       const data = await res.json();
       state.jobs = data.jobs || [];
       renderJobs();
 
       const active = state.jobs.find(j => j.status === 'running' || j.status === 'queued');
-      if (!state.selectedId && active) selectJob(active.id);
+      if (!state.selectedId && active) await selectJob(active.id);
       else if (state.selectedId) {
         const still = state.jobs.find(j => j.id === state.selectedId);
-        if (still) selectJob(still.id, false);
-        else if (active) selectJob(active.id);
-      } else if (state.jobs[0]) {
-        selectJob(state.jobs[0].id, false);
+        if (still) await selectJob(still.id, false);
+        else if (active) await selectJob(active.id);
       }
       updateRunButtons();
     }
@@ -237,11 +388,11 @@
     function renderJobs() {
       const root = el('jobs');
       if (!state.jobs.length) {
-        root.innerHTML = '<div style="color:var(--muted);padding:8px;font-size:.9rem">Sin tareas aún.</div>';
+        root.innerHTML = '<div style="color:var(--muted);padding:12px;font-size:.9rem">Sin tareas aún.</div>';
         return;
       }
       root.innerHTML = state.jobs.map(j => `
-        <div class="job ${j.id === state.selectedId ? 'active' : ''}" onclick="selectJob('${j.id}')">
+        <div class="job ${j.id === state.selectedId ? 'active' : ''}" onclick="onJobClick('${j.id}')">
           <div class="top">
             <span class="${statusClass(j.status)}">${j.status}</span>
             <span>${j.steps || 0} steps</span>
@@ -252,24 +403,28 @@
       `).join('');
     }
 
-    function escapeHtml(s) {
-      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    async function onJobClick(id) {
+      await selectJob(id, true);
+      showPanel('viewer');
     }
 
     function updateRunButtons() {
       const active = state.jobs.find(j => j.status === 'running' || j.status === 'queued');
       el('btn-run').disabled = !!active;
       const sel = state.jobs.find(j => j.id === state.selectedId);
-      el('btn-cancel').disabled = !(sel && (sel.status === 'running' || sel.status === 'queued'));
+      const canCancel = !!(sel && (sel.status === 'running' || sel.status === 'queued'));
+      el('btn-cancel').disabled = !canCancel;
+      el('btn-cancel-2').disabled = !canCancel;
     }
 
     async function selectJob(id, reconnect = true) {
       state.selectedId = id;
       localStorage.setItem('selectedJobId', id);
+      state.seenEventIds = new Set();
       renderJobs();
       updateRunButtons();
 
-      const res = await fetch('/api/tasks/' + id);
+      const res = await api('/api/tasks/' + id);
       if (!res.ok) return;
       const data = await res.json();
       const job = data.job;
@@ -296,15 +451,16 @@
       else if (job.last_screenshot || job.status === 'completed' || job.status === 'failed') showScreenshot(job.id);
       else hideViewerMedia();
 
-      if (reconnect && (job.status === 'running' || job.status === 'queued')) {
-        connectSSE(job.id);
-      } else {
-        closeSSE();
-      }
+      if (reconnect && (job.status === 'running' || job.status === 'queued')) connectSSE(job.id);
+      else closeSSE();
       updateRunButtons();
     }
 
     function appendEvent(ev) {
+      if (ev.id != null) {
+        if (state.seenEventIds.has(ev.id)) return;
+        state.seenEventIds.add(ev.id);
+      }
       const log = el('log');
       const p = ev.payload || {};
       let body = '';
@@ -313,7 +469,7 @@
         body = `step ${p.step || '?'}` + (p.url ? ` · ${p.url}` : '') +
           (p.action ? `\naction: ${p.action}` : '') +
           (p.thought ? `\nthought: ${p.thought}` : '');
-        if (p.has_screenshot) showScreenshot(state.selectedId, true);
+        if (p.has_screenshot && state.panel === 'viewer') showScreenshot(state.selectedId, true);
         if (p.url) el('viewer-meta').textContent = p.url;
       } else if (ev.type === 'log') {
         body = p.message || JSON.stringify(p);
@@ -347,28 +503,22 @@
 
     function connectSSE(jobId) {
       closeSSE();
-      const es = new EventSource('/api/tasks/' + jobId + '/events');
+      const es = new EventSource('/api/tasks/' + jobId + '/events', { withCredentials: true });
       state.es = es;
-
       const handler = (e) => {
         try {
           const ev = JSON.parse(e.data);
           if (ev.type) appendEvent(ev);
-          else appendEvent({ type: e.type, payload: ev, ts: new Date().toISOString() });
+          else appendEvent({ type: e.type, payload: ev, ts: new Date().toISOString(), id: ev.id });
         } catch {}
         refreshJobsQuiet();
       };
-
       ['step', 'log', 'result', 'error', 'status', 'message'].forEach(t => es.addEventListener(t, handler));
       es.addEventListener('done', async () => {
         closeSSE();
         await refreshJobs();
-        if (state.selectedId === jobId) selectJob(jobId, false);
+        if (state.selectedId === jobId) await selectJob(jobId, false);
       });
-      es.onerror = () => {
-        // browser will retry; if terminal, done event should fire on reconnect replay
-      };
-
       showVnc();
     }
 
@@ -377,7 +527,7 @@
       clearTimeout(quietTimer);
       quietTimer = setTimeout(async () => {
         try {
-          const res = await fetch('/api/tasks?limit=50');
+          const res = await api('/api/tasks?limit=50');
           const data = await res.json();
           state.jobs = data.jobs || [];
           renderJobs();
@@ -392,20 +542,15 @@
     }
 
     function showVnc() {
-      const path = (state.config && state.config.vnc_path) || '/vnc/vnc.html?autoconnect=1&resize=scale';
+      const path = (state.config && state.config.vnc_path) || '/vnc/vnc.html?autoconnect=1&resize=scale&view_only=1';
       const frame = el('vnc-frame');
       const empty = el('viewer-empty');
       const shot = el('shot-fallback');
       empty.style.display = 'none';
       shot.style.display = 'none';
-      if (!state.vncLoaded || frame.style.display === 'none') {
-        // path query: ensure websocket path works behind proxy
-        // noVNC uses "path" query for websocket relative path
+      if (!state.vncLoaded) {
         let src = path;
-        if (!src.includes('path=')) {
-          src += (src.includes('?') ? '&' : '?') + 'path=vnc/websockify';
-        }
-        // Prefer password-less connect
+        if (!src.includes('path=')) src += (src.includes('?') ? '&' : '?') + 'path=vnc/websockify';
         if (!src.includes('autoconnect=')) src += '&autoconnect=1';
         frame.src = src;
         state.vncLoaded = true;
@@ -424,7 +569,6 @@
           frame.style.display = 'none';
           shot.style.display = 'block';
         } else {
-          // keep VNC on top while running; screenshot is fallback if user hides VNC
           shot.style.display = 'none';
         }
       };
@@ -445,27 +589,32 @@
 
     async function startTask() {
       const task = el('task').value.trim();
-      if (!task) return;
+      if (!task) { toast('Escribe una tarea.', true); return; }
       el('btn-run').disabled = true;
+      toast('Encolando…');
       try {
-        const res = await fetch('/api/tasks', {
+        const res = await api('/api/tasks', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ task }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           const detail = data.detail;
           const msg = typeof detail === 'object' ? (detail.message || JSON.stringify(detail)) : (detail || res.status);
-          alert('Error: ' + msg);
-          if (detail && detail.active_job_id) selectJob(detail.active_job_id);
+          toast('Error: ' + msg, true);
+          if (detail && detail.active_job_id) {
+            await selectJob(detail.active_job_id);
+            showPanel('viewer');
+          }
           return;
         }
         el('task').value = '';
+        toast('Job ' + data.id + ' en marcha');
         await refreshJobs();
-        selectJob(data.id, true);
+        await selectJob(data.id, true);
+        showPanel('viewer');
       } catch (e) {
-        alert('Error de red: ' + e.message);
+        toast('Error: ' + e.message, true);
       } finally {
         updateRunButtons();
       }
@@ -474,26 +623,37 @@
     async function cancelTask() {
       if (!state.selectedId) return;
       el('btn-cancel').disabled = true;
+      el('btn-cancel-2').disabled = true;
+      toast('Cancelando…');
       try {
-        await fetch('/api/tasks/' + state.selectedId + '/cancel', { method: 'POST' });
+        await api('/api/tasks/' + state.selectedId + '/cancel', { method: 'POST' });
         await refreshJobs();
-        selectJob(state.selectedId, true);
+        await selectJob(state.selectedId, true);
+        toast('Cancelación enviada');
       } catch (e) {
-        alert(e.message);
+        toast(e.message, true);
       } finally {
         updateRunButtons();
       }
     }
 
-    // boot
     (async function init() {
-      await loadConfig();
-      await refreshJobs();
-      setInterval(loadConfig, 15000);
-      setInterval(() => {
-        const active = state.jobs.some(j => j.status === 'running' || j.status === 'queued');
-        if (!active) refreshJobs().catch(() => {});
-      }, 10000);
+      try {
+        const ok = await ensureAuth();
+        if (!ok) return;
+        el('gate').style.display = 'none';
+        el('app').style.display = 'grid';
+        await loadConfig();
+        await refreshJobs();
+        showPanel(state.panel);
+        setInterval(loadConfig, 15000);
+        setInterval(() => {
+          const active = state.jobs.some(j => j.status === 'running' || j.status === 'queued');
+          if (!active) refreshJobs().catch(() => {});
+        }, 10000);
+      } catch (e) {
+        el('gate').textContent = 'Error: ' + e.message;
+      }
     })();
   </script>
 </body>

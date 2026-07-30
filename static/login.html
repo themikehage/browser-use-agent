@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login · Browser Agent</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --panel: #121821;
+      --text: #e8eef7;
+      --muted: #8b9bb4;
+      --accent: #3b82f6;
+      --danger: #ef4444;
+      --border: #243044;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #1a2740, var(--bg));
+      color: var(--text);
+    }
+    .card {
+      width: min(400px, 92vw);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    h1 { margin: 0 0 6px; font-size: 1.25rem; }
+    p { margin: 0 0 20px; color: var(--muted); font-size: .92rem; }
+    label { display: block; font-size: .8rem; color: var(--muted); margin: 0 0 6px; }
+    input {
+      width: 100%; padding: 11px 12px; border-radius: 10px;
+      border: 1px solid var(--border); background: #0c1118; color: var(--text);
+      font: inherit; margin-bottom: 14px;
+    }
+    input:focus { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
+    button {
+      width: 100%; border: 0; border-radius: 10px; padding: 12px;
+      background: var(--accent); color: #fff; font: inherit; font-weight: 650; cursor: pointer;
+    }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .err { color: var(--danger); min-height: 1.2em; font-size: .88rem; margin: 0 0 10px; }
+  </style>
+</head>
+<body>
+  <form class="card" id="form">
+    <h1>Browser Agent</h1>
+    <p>Inicia sesión para continuar</p>
+    <div class="err" id="err"></div>
+    <label for="user">Usuario</label>
+    <input id="user" name="username" autocomplete="username" required />
+    <label for="pass">Contraseña</label>
+    <input id="pass" name="password" type="password" autocomplete="current-password" required />
+    <button type="submit" id="btn">Entrar</button>
+  </form>
+  <script>
+    const form = document.getElementById('form');
+    const err = document.getElementById('err');
+    const btn = document.getElementById('btn');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('user').value.trim(),
+            password: document.getElementById('pass').value,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          err.textContent = data.detail || 'Login fallido';
+          return;
+        }
+        location.href = '/';
+      } catch (ex) {
+        err.textContent = ex.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    // If already authed, go home
+    fetch('/api/auth/status').then(r => r.json()).then(d => {
+      if (d.authenticated || !d.auth_required) location.replace('/');
+    }).catch(() => {});
+  </script>
+</body>
+</html>

@@ -42,8 +42,15 @@ fi
 echo "[start] fluxbox"
 fluxbox >/tmp/fluxbox.log 2>&1 &
 
+VNC_VIEW_ONLY="${VNC_VIEW_ONLY:-true}"
+X11VNC_EXTRA=""
+if [ "${VNC_VIEW_ONLY}" = "true" ] || [ "${VNC_VIEW_ONLY}" = "1" ] || [ "${VNC_VIEW_ONLY}" = "yes" ]; then
+  X11VNC_EXTRA="-viewonly"
+  echo "[start] x11vnc view-only mode"
+fi
+
 echo "[start] x11vnc on :5900"
-x11vnc -display "${DISPLAY}" -forever -shared -rfbport 5900 -nopw -quiet -xkb >/tmp/x11vnc.log 2>&1 &
+x11vnc -display "${DISPLAY}" -forever -shared -rfbport 5900 -nopw -quiet -xkb ${X11VNC_EXTRA} >/tmp/x11vnc.log 2>&1 &
 
 echo "[start] websockify/noVNC on :6080 (internal only)"
 websockify --web=/usr/share/novnc 6080 localhost:5900 >/tmp/websockify.log 2>&1 &

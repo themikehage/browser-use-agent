@@ -12,6 +12,11 @@ services:
       - DISPLAY=:99
       - VNC_UPSTREAM=http://127.0.0.1:6080
       - VNC_WS_UPSTREAM=ws://127.0.0.1:6080
+      - VNC_VIEW_ONLY=${VNC_VIEW_ONLY:-true}
+      - APP_USERNAME=${APP_USERNAME:-admin}
+      - APP_PASSWORD=${APP_PASSWORD:-changeme}
+      - APP_AUTH_TOKEN=${APP_AUTH_TOKEN:-}
+      - AUTH_SECRET=${AUTH_SECRET:-dev-secret-change-me}
     volumes:
       - agent-data:/data
     shm_size: "2gb"
