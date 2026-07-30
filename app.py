@@ -3,8 +3,7 @@ import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from browser_use import Agent, Browser
-from langchain_openai import ChatOpenAI
+from browser_use import Agent, Browser, ChatOpenAI
 
 app = FastAPI()
 
