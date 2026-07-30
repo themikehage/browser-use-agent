@@ -6,4 +6,16 @@ services:
       - "6080:6080"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-anthropic/claude-sonnet-4}
+      - AGENT_MAX_STEPS=${AGENT_MAX_STEPS:-30}
+      - AGENT_TASK_TIMEOUT=${AGENT_TASK_TIMEOUT:-300}
+      - VNC_PUBLIC_URL=${VNC_PUBLIC_URL:-http://localhost:6080/vnc.html}
+      - DISPLAY=:99
+    shm_size: "2gb"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

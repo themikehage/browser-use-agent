@@ -4,37 +4,215 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agente Browser-Use</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e7ecf3;
+      --muted: #8b9bb4;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --danger: #ef4444;
+      --ok: #22c55e;
+      --border: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 16px;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    h2 { margin: 0 0 8px; font-weight: 650; }
+    .sub { color: var(--muted); margin: 0 0 20px; font-size: 0.95rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 96px;
+      resize: vertical;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0c1118;
+      color: var(--text);
+      padding: 12px;
+      font: inherit;
+    }
+    textarea:focus {
+      outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+      border-color: var(--accent);
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font: inherit;
+      font-weight: 600;
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    #status {
+      margin: 12px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 1.5em;
+    }
+    #status.error { color: var(--danger); }
+    #status.ok { color: var(--ok); }
+    #status.busy { color: #fbbf24; }
+    .meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .dot.ok { background: var(--ok); }
+    .dot.busy { background: #fbbf24; }
+    .dot.err { background: var(--danger); }
+  </style>
 </head>
-<body style="font-family: sans-serif; max-width: 500px; margin: 40px auto;">
-  <h2>Mandar tarea al agente</h2>
-  <textarea id="task" rows="3" style="width:100%"></textarea>
-  <button onclick="enviar()">Ejecutar</button>
-  <p id="status"></p>
-  <p><a id="vnc-link" href="#" target="_blank">Ver navegador en vivo →</a></p>
+<body>
+  <h2>Agente Browser-Use</h2>
+  <p class="sub">Envía una tarea y observa el navegador en vivo por VNC.</p>
+
+  <div class="card">
+    <div class="meta">
+      <span class="badge"><span id="health-dot" class="dot"></span><span id="health-label">conectando…</span></span>
+      <span class="badge" id="model-label">modelo: —</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <textarea id="task" placeholder="Ej: Ve a example.com y devuelve el texto del H1"></textarea>
+    <div class="row">
+      <button id="btn" onclick="enviar()">Ejecutar</button>
+      <a id="vnc-link" href="#" target="_blank" rel="noopener">Ver navegador en vivo →</a>
+    </div>
+    <p id="status"></p>
+  </div>
 
   <script>
-    (function() {
+    const statusEl = document.getElementById('status');
+    const btn = document.getElementById('btn');
+    const healthDot = document.getElementById('health-dot');
+    const healthLabel = document.getElementById('health-label');
+    const modelLabel = document.getElementById('model-label');
+    const vncLink = document.getElementById('vnc-link');
+
+    function setStatus(text, kind) {
+      statusEl.textContent = text;
+      statusEl.className = kind || '';
+    }
+
+    function defaultVncUrl() {
       var host = window.location.hostname || 'localhost';
-      var vncUrl = window.location.protocol + '//' + host + ':6080/vnc.html';
-      document.getElementById('vnc-link').href = vncUrl;
-    })();
+      var proto = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      return proto + '//' + host + ':6080/vnc.html';
+    }
+
+    async function loadConfig() {
+      try {
+        var res = await fetch('/config');
+        if (!res.ok) throw new Error('config ' + res.status);
+        var data = await res.json();
+        modelLabel.textContent = 'modelo: ' + (data.model || '—');
+        vncLink.href = data.vnc_url || defaultVncUrl();
+        healthDot.className = 'dot ' + (data.busy ? 'busy' : 'ok');
+        healthLabel.textContent = data.busy ? 'ocupado' : 'listo';
+      } catch (e) {
+        healthDot.className = 'dot err';
+        healthLabel.textContent = 'sin conexión';
+        vncLink.href = defaultVncUrl();
+      }
+    }
 
     async function enviar() {
-      var task = document.getElementById('task').value;
-      var statusEl = document.getElementById('status');
-      statusEl.innerText = 'Ejecutando...';
+      var task = document.getElementById('task').value.trim();
+      if (!task) {
+        setStatus('Escribe una tarea primero.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      setStatus('Ejecutando… esto puede tardar varios minutos.', 'busy');
+      healthDot.className = 'dot busy';
+      healthLabel.textContent = 'ocupado';
+
       try {
         var res = await fetch('/task', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({task: task})
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task: task })
         });
-        var data = await res.json();
-        statusEl.innerText = data.result || JSON.stringify(data);
+
+        var data = null;
+        try { data = await res.json(); } catch (_) { data = null; }
+
+        if (!res.ok) {
+          var detail = (data && (data.detail || data.message)) || ('HTTP ' + res.status);
+          if (Array.isArray(detail)) {
+            detail = detail.map(function (d) { return d.msg || JSON.stringify(d); }).join('; ');
+          }
+          setStatus('Error: ' + detail, 'error');
+          return;
+        }
+
+        var result = (data && data.result) != null ? data.result : JSON.stringify(data);
+        var steps = data && data.steps != null ? ' (' + data.steps + ' steps)' : '';
+        setStatus('OK' + steps + ':\n' + result, 'ok');
       } catch (e) {
-        statusEl.innerText = 'Error: ' + e.message;
+        setStatus('Error de red: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        loadConfig();
       }
     }
+
+    loadConfig();
+    setInterval(loadConfig, 15000);
   </script>
 </body>
 </html>
