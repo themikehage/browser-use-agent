@@ -28,9 +28,15 @@ async def run_task(req: TaskRequest):
                 window_size={"width": 1280, "height": 800},
             )
 
+            llm = ChatOpenAI(
+                model=os.getenv("OPENROUTER_MODEL", "anthropic/claude-haiku-4.5"),
+                openai_api_key=os.environ["OPENROUTER_API_KEY"],
+                openai_api_base="https://openrouter.ai/api/v1",
+            )
+
             agent = Agent(
                 task=req.task,
-                llm=ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o")),
+                llm=llm,
                 browser=browser,
             )
 
