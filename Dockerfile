@@ -3,7 +3,8 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DISPLAY=:99 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    DATA_DIR=/data
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
@@ -29,11 +30,13 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 COPY . .
 RUN chmod +x start.sh \
-    && mkdir -p /tmp
+    && mkdir -p /data /data/screenshots /tmp
 
-EXPOSE 8000 6080
+VOLUME ["/data"]
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
   CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
 CMD ["./start.sh"]
