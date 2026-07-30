@@ -3,8 +3,7 @@ import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from browser_use import Agent, Browser
-from langchain_openai import ChatOpenAI
+from browser_use import Agent, Browser, ChatOpenAI
 
 app = FastAPI()
 
@@ -34,7 +33,6 @@ async def run_task(req: TaskRequest):
                 api_key=os.environ["OPENROUTER_API_KEY"],
                 base_url="https://openrouter.ai/api/v1",
             )
-            llm.provider = "openai"
 
             agent = Agent(
                 task=req.task,
