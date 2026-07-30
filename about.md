@@ -31,7 +31,7 @@ Contenedor único con:
 | Variable | Descripción | Default |
 |----------|-------------|---------|
 | `OPENROUTER_API_KEY` | API key de OpenRouter | **requerida** |
-| `OPENROUTER_MODEL` | Modelo LLM | `anthropic/claude-sonnet-4` |
+| `OPENROUTER_MODEL` | Modelo LLM | `openai/gpt-5.6-luna` |
 | `AGENT_MAX_STEPS` | Máx. pasos del agente | `30` |
 | `AGENT_TASK_TIMEOUT` | Timeout tarea (segundos) | `300` |
 | `VNC_PUBLIC_URL` | URL pública noVNC para el frontend | vacío (fallback host:6080) |

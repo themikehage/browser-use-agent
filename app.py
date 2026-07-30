@@ -17,7 +17,7 @@ logger = logging.getLogger("browser-agent")
 
 MAX_STEPS = int(os.getenv("AGENT_MAX_STEPS", "30"))
 TASK_TIMEOUT = int(os.getenv("AGENT_TASK_TIMEOUT", "300"))
-DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
+DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-5.6-luna")
 VNC_PUBLIC_URL = os.getenv("VNC_PUBLIC_URL", "")
 OPENROUTER_BASE_URL = os.getenv(
     "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
