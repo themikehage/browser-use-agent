@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from browser_use import Agent, Browser, ChatOpenRouter
+from browser_use import Agent, Browser, ChatOpenAI
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,22 +19,31 @@ MAX_STEPS = int(os.getenv("AGENT_MAX_STEPS", "30"))
 TASK_TIMEOUT = int(os.getenv("AGENT_TASK_TIMEOUT", "300"))
 DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
 VNC_PUBLIC_URL = os.getenv("VNC_PUBLIC_URL", "")
+OPENROUTER_BASE_URL = os.getenv(
+    "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+)
 
 task_lock = asyncio.Lock()
 current_task_running = False
 
 
+def _get_api_key() -> str | None:
+    return os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not os.environ.get("OPENROUTER_API_KEY"):
-        logger.error("OPENROUTER_API_KEY is not set")
-        raise RuntimeError("OPENROUTER_API_KEY environment variable is required")
-    logger.info(
-        "Startup OK | model=%s max_steps=%s timeout=%ss",
-        DEFAULT_MODEL,
-        MAX_STEPS,
-        TASK_TIMEOUT,
-    )
+    if not _get_api_key():
+        logger.warning(
+            "OPENROUTER_API_KEY not set at startup — /task will fail until configured"
+        )
+    else:
+        logger.info(
+            "Startup OK | model=%s max_steps=%s timeout=%ss",
+            DEFAULT_MODEL,
+            MAX_STEPS,
+            TASK_TIMEOUT,
+        )
     yield
 
 
@@ -57,6 +66,7 @@ class HealthResponse(BaseModel):
     model: str
     display: str | None
     vnc_url: str | None
+    api_key_configured: bool
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -67,6 +77,7 @@ async def health():
         model=DEFAULT_MODEL,
         display=os.environ.get("DISPLAY"),
         vnc_url=VNC_PUBLIC_URL or None,
+        api_key_configured=bool(_get_api_key()),
     )
 
 
@@ -78,6 +89,7 @@ async def config():
         "task_timeout": TASK_TIMEOUT,
         "vnc_url": VNC_PUBLIC_URL or None,
         "busy": current_task_running,
+        "api_key_configured": bool(_get_api_key()),
     }
 
 
@@ -102,6 +114,13 @@ async def _close_browser(browser: Browser | None) -> None:
 async def run_task(req: TaskRequest):
     global current_task_running
 
+    api_key = _get_api_key()
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENROUTER_API_KEY no configurada en el servidor",
+        )
+
     if current_task_running or task_lock.locked():
         raise HTTPException(
             status_code=409,
@@ -125,10 +144,20 @@ async def run_task(req: TaskRequest):
                 headless=False,
                 window_size={"width": 1280, "height": 800},
                 chromium_sandbox=False,
-                args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+                args=[
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
+                ],
             )
 
-            llm = ChatOpenRouter(model=DEFAULT_MODEL)
+            # Official browser-use pattern for OpenRouter (OpenAI-compatible)
+            llm = ChatOpenAI(
+                model=DEFAULT_MODEL,
+                api_key=api_key,
+                base_url=OPENROUTER_BASE_URL,
+            )
 
             agent = Agent(
                 task=req.task,
